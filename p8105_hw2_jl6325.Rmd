@@ -162,10 +162,10 @@ MA = read_csv("data/mci_amyloid.csv",
 ```
 Import all the data and use pivot_longer to tidy data.
 
-```{r combine}
+```{r combine_MCI}
 basline = anti_join(free_of_MCI, MA, by = "id")
 amyloid = anti_join(MA, free_of_MCI, by = "id")
-combine = inner_join(free_of_MCI, MA, by = "id")
+combine_MCI = inner_join(free_of_MCI, MA, by = "id")
 ```
 There are 8 participants are in baseline only,
 there are 16 (80/5) participants are in amyloid only,
@@ -173,5 +173,5 @@ and there are 2355 observations matched with both baseline and amyloid,
 and the number of participants are 2355/5 = 471.
 
 ```{r}
-write.csv(combine, "combine.csv")
+write.csv(combine_MCI, "combine_MCI.csv")
 ```
