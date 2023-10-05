@@ -23,5 +23,58 @@ library(readxl)
 
 
 # Problem 2
-```{r}
-
+Mr. Trash Wheel
+```{r import_Mr}
+Mr_Trash_Wheel <- read_excel("data/202309 Trash Wheel Collection Data.xlsx",
+                         sheet = "Mr. Trash Wheel",
+                         range = "A2:N586")|>
+                         janitor::clean_names()|>
+                           drop_na(dumpster)|>
+                           mutate(homes_powered = weight_tons*500/30,
+                                  name = "Mr. Trash Wheel",
+                                  year = as.numeric(year))|>
+                           select(everything())
+```
+Professor Trash Wheel
+```{r import_Prof}
+Professor_Trash_Wheel <- read_excel("data/202309 Trash Wheel Collection Data.xlsx",
+                         sheet = "Professor Trash Wheel",
+                         range = "A2:M108")|>
+                         janitor::clean_names()|>
+                           drop_na(dumpster)|>
+                           mutate(homes_powered = weight_tons*500/30,
+                                  name = "Professor Trash Wheel")|>
+                           select(everything())
+```
+Gwynnda
+```{r import_Gwynnda}
+Gwynnda_Trash_Wheel <- read_excel("data/202309 Trash Wheel Collection Data.xlsx",
+                         sheet = "Gwynnda Trash Wheel",
+                         range = "A2:L157")|>
+                         janitor::clean_names()|>
+                           drop_na(dumpster)|>
+                           mutate(homes_powered = weight_tons*500/30,
+                                  name = "Gwynnda")|>
+                           select(everything())
+```
+Combining all 3 datasets
+```{r combine}
+Trash_Wheel_Datasets <- 
+              bind_rows(Mr_Trash_Wheel, Professor_Trash_Wheel, Gwynnda_Trash_Wheel)
+nrow(Trash_Wheel_Datasets)
+ncol(Trash_Wheel_Datasets)
+```
+There are 845 observations and 15 variables in the resulting dataset(Trash_Whell_Datasets),
+and the variables are name(which trash wheel), month, year, weight_tons, and homes_powered.
+```{r Prof_tw}
+filter(Trash_Wheel_Datasets, name == "Professor Trash Wheel")|>
+  pull(weight_tons)|>
+  sum()
+```
+The total weight of trash collected by Professor Trash Wheel is 216.26 tons.
+```{r Cigaratte_butts}
+filter(Trash_Wheel_Datasets, name == "Gwynnda", year == 2021, month == "July")|>
+  pull(cigarette_butts)|>
+  sum()
+```
+The total number of cigarette butts collected by Gwynnda in July of 2021 is 16300.
