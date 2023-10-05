@@ -20,7 +20,56 @@ library(tidyverse)
 library(readxl)
 ```
 # problem 1
+```{r clean_538_pols}
+month_df = 
+  tibble(
+    month_num = 1:12,
+    month_abb = month.abb,
+    month = month.name
+  )
 
+pols = 
+  read_csv("./data/pols-month.csv") |>
+  separate(mon, into = c("year", "month_num", "day"), convert = TRUE) |>
+  mutate(
+    president = recode(prez_gop, "0" = "dem", "1" = "gop", "2" = "gop")) |>
+  left_join(x = _, y = month_df) |> 
+  select(year, month, everything(), -day, -starts_with("prez")) 
+```
+We also clean the 538 `snp` data, which contains information related to Standard & Poor’s stock market index.
+```{r clean_538_snp}
+snp = 
+  read_csv(
+    "./data/snp.csv",
+    col_types = cols(date = col_date(format = "%m/%d/%y"))) |>
+  separate(date, into = c("year", "month_num", "day"), convert = TRUE) |>
+  mutate(
+    year = if_else(year > 2023, year - 100, year)) |> 
+  left_join(x = _, y = month_df) |> 
+  select(year, month, close) 
+```
+Finally, we tidy the `unemployment` data so that it can be merged with the `pols` and `snp` datasets.
+```{r clean_538_unemp}
+unemployment = 
+  read_csv("./data/unemployment.csv") |>
+  rename(year = Year) |>
+  pivot_longer(
+    Jan:Dec, 
+    names_to = "month_abb",
+    values_to = "unemployment"
+  ) |> 
+  left_join(x = _, y = month_df) |> 
+  select(year, month, unemployment)
+```
+Now we merge the three datasets!
+```{r merge_538}
+data_538 = 
+  left_join(pols, snp) |>
+  left_join(x = _, y = unemployment)
+
+str(data_538)
+```
+Notice that there are some `NA` values in the `close` and `unemployment` variables, which indicate that the value of these variables is missing at those locations.
 
 # Problem 2
 Mr. Trash Wheel
@@ -61,20 +110,68 @@ Combining all 3 datasets
 ```{r combine}
 Trash_Wheel_Datasets <- 
               bind_rows(Mr_Trash_Wheel, Professor_Trash_Wheel, Gwynnda_Trash_Wheel)
-nrow(Trash_Wheel_Datasets)
-ncol(Trash_Wheel_Datasets)
 ```
 There are 845 observations and 15 variables in the resulting dataset(Trash_Whell_Datasets),
-and the variables are name(which trash wheel), month, year, weight_tons, and homes_powered.
-```{r Prof_tw}
-filter(Trash_Wheel_Datasets, name == "Professor Trash Wheel")|>
+and the variables are name(which trash wheel), month, year, weight_tons, and homes_powered by
+codes nrow(Trash_Wheel_Datasets)
+ncol(Trash_Wheel_Datasets).
+
+The total weight of trash collected by Professor Trash Wheel is 216.26 tons by this code filter(Trash_Wheel_Datasets, name == "Professor Trash Wheel")|>
   pull(weight_tons)|>
-  sum()
-```
-The total weight of trash collected by Professor Trash Wheel is 216.26 tons.
-```{r Cigaratte_butts}
-filter(Trash_Wheel_Datasets, name == "Gwynnda", year == 2021, month == "July")|>
+  sum().
+
+The total number of cigarette butts collected by Gwynnda in July of 2021 is 16300 by this code filter(Trash_Wheel_Datasets, name == "Gwynnda", year == 2021, month == "July")|>
   pull(cigarette_butts)|>
-  sum()
+  sum().
+
+# Problem 3
+```{r}
+MB = 
+  read_csv("data/MCI_baseline.csv", skip = 1, na = c(".")) |>
+  janitor::clean_names() |>
+  mutate(sex = case_match(sex, 1 ~ "male", 0 ~ "female"),
+         apoe4 = case_match(apoe4, 1 ~ "positive", 0 ~ "negative"),
+         age_at_onset = as.numeric(age_at_onset))
+MB
 ```
-The total number of cigarette butts collected by Gwynnda in July of 2021 is 16300.
+
+There were 483 participants at the start of the research.
+
+```{r Baseline}
+free_of_MCI = MB|>
+  filter(age_at_onset - current_age > 0 | is.na(age_at_onset))
+
+got_MCI = MB|>
+  filter(age_at_onset - current_age > 0)
+
+mean(pull(free_of_MCI, current_age))
+
+nrow(filter(free_of_MCI, sex == "female" & apoe4 == "positive")) / nrow(filter(free_of_MCI, sex == "female"))
+```
+We first filter all the observations free of MCI at the start of this study,
+then we find out 93 of them developed  to MCI,
+and the average age is 65 years old,
+and the proportion of women in the study are APOE4 carriers 30%.
+
+```{r Amyloid}
+MA = read_csv("data/mci_amyloid.csv",
+              skip = 1)|>
+  janitor::clean_names()|>
+  rename(id = study_id)|>
+  pivot_longer(baseline:time_8)
+```
+Import all the data and use pivot_longer to tidy data.
+
+```{r combine}
+basline = anti_join(free_of_MCI, MA, by = "id")
+amyloid = anti_join(MA, free_of_MCI, by = "id")
+combine = inner_join(free_of_MCI, MA, by = "id")
+```
+There are 8 participants are in baseline only,
+there are 16 (80/5) participants are in amyloid only,
+and there are 2355 observations matched with both baseline and amyloid,
+and the number of participants are 2355/5 = 471.
+
+```{r}
+write.csv(combine, "combine.csv")
+```
